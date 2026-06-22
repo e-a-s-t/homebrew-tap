@@ -6,12 +6,12 @@ class Ctop < Formula
   on_macos do
     on_arm do
       url "https://github.com/e-a-s-t/ctop/releases/download/v0.2.9/ctop-darwin-arm64.tar.gz"
-      sha256 "REPLACE_WITH_SHA256"
+      sha256 "fe37c003ead871dafb5edbc16a713a528cf89b48cba4c2c4fcccc7b1b8a5126b"
     end
 
     on_intel do
       url "https://github.com/e-a-s-t/ctop/releases/download/v0.2.9/ctop-darwin-amd64.tar.gz"
-      sha256 "REPLACE_WITH_SHA256"
+      sha256 "64e9112fa3dce013da67d90cb07c14d5769af0a1ba19ea0b8ba8c95f10917248"
     end
   end
 
