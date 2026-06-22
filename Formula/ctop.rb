@@ -1,17 +1,17 @@
 class Ctop < Formula
   desc "top-like monitor for Codex and GitHub Copilot usage"
   homepage "https://github.com/e-a-s-t/ctop"
-  version "0.2.9"
+  version "0.2.10"
 
   on_macos do
     on_arm do
-      url "https://github.com/e-a-s-t/ctop/releases/download/v0.2.9/ctop-darwin-arm64.tar.gz"
-      sha256 "fe37c003ead871dafb5edbc16a713a528cf89b48cba4c2c4fcccc7b1b8a5126b"
+      url "https://github.com/e-a-s-t/ctop/releases/download/v0.2.10/ctop-darwin-arm64.tar.gz"
+      sha256 "8a7403517db0f177dfe20e8b8f5c263e023e02f0ea14f66fd5d363c8619146ca"
     end
 
     on_intel do
-      url "https://github.com/e-a-s-t/ctop/releases/download/v0.2.9/ctop-darwin-amd64.tar.gz"
-      sha256 "64e9112fa3dce013da67d90cb07c14d5769af0a1ba19ea0b8ba8c95f10917248"
+      url "https://github.com/e-a-s-t/ctop/releases/download/v0.2.10/ctop-darwin-amd64.tar.gz"
+      sha256 "41b0b4553f583cd760713ab72c96f4f23576644df608e238e6a689e0219c8931"
     end
   end
 
