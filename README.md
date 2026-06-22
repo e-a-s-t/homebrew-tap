@@ -6,7 +6,7 @@ Homebrew tap for ctop.
 
 ```bash
 brew tap e-a-s-t/tap
-brew install ctop
+brew install e-a-s-t/tap/ctop
 ```
 
 ## Upgrade
