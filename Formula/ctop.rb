@@ -9,8 +9,8 @@ class Ctop < Formula
       sha256 "8a7403517db0f177dfe20e8b8f5c263e023e02f0ea14f66fd5d363c8619146ca"
     end
 
-    on_intel do
-      url "https://github.com/e-a-s-t/ctop/releases/download/v0.2.10/ctop-darwin-amd64.tar.gz"
+    on_linux do
+      url "https://github.com/e-a-s-t/ctop/releases/download/v0.2.10/ctop-linux-amd64.tar.gz"
       sha256 "41b0b4553f583cd760713ab72c96f4f23576644df608e238e6a689e0219c8931"
     end
   end
