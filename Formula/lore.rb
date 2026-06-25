@@ -6,7 +6,7 @@ class Lore < Formula
   on_macos do
     on_arm do
       url "https://github.com/e-a-s-t/lore-tui/releases/download/v0.1.4/lore-darwin-arm64.tar.gz"
-      sha256 "0359ac83473f42fbcf13ac68e00e7de4b025ea529ea39b7ca2bb8cdd84eddf3f"
+      sha256 "f42d9f8dca8ce4315ac4bc6b0df56579779d3828d5a20aa52a34c8e37a171fa5"
     end
   end
 
