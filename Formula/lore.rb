@@ -1,18 +1,18 @@
 class Lore < Formula
   desc "Git-native project memory and traceability tool"
   homepage "https://github.com/e-a-s-t/lore"
-  version "0.1.5"
+  version "0.1.6"
 
   on_macos do
     on_arm do
-      url "https://github.com/e-a-s-t/lore/releases/download/v0.1.5/lore-darwin-arm64.tar.gz"
-      sha256 "909a1c4a010460658c85e4304d93089bfae51d7ff2dcf5f93c55036941b15c00"
+      url "https://github.com/e-a-s-t/lore/releases/download/v0.1.6/lore-darwin-arm64.tar.gz"
+      sha256 "23b984c07b993389fbb71ebba1684ff4d580832536ca3664d1348e00c36f8944"
     end
   end
 
   on_linux do
-    url "https://github.com/e-a-s-t/lore/releases/download/v0.1.5/lore-linux-amd64.tar.gz"
-    sha256 "f5ccbd5e519e8975228e0436a7734b1ab170e0431417f450f5a220cfb98ef82b"
+    url "https://github.com/e-a-s-t/lore/releases/download/v0.1.6/lore-linux-amd64.tar.gz"
+    sha256 "28da1cd37c6565750c08ae242520fa2184bedb7a90343b61e5285d2b04ca1b4d"
   end
 
   def install
