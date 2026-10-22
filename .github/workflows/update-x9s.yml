@@ -1,0 +1,181 @@
+name: Update x9s formula
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published stable x9s version (blank selects the latest)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select release, verify assets, and update formula
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -n "$REQUESTED_VERSION" ]]; then
+            requested_tag="${REQUESTED_VERSION#v}"
+            if [[ ! "$requested_tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+              echo "Invalid version: $REQUESTED_VERSION" >&2
+              exit 1
+            fi
+            release_json="$(gh api "repos/e-a-s-t/x9s/releases/tags/v${requested_tag}")" || {
+              echo "Could not retrieve release v${requested_tag} from GitHub." >&2
+              exit 1
+            }
+          else
+            releases_json="$(gh api --paginate --slurp 'repos/e-a-s-t/x9s/releases?per_page=100')" || {
+              echo "Could not retrieve x9s releases from GitHub." >&2
+              exit 1
+            }
+            printf '%s\n' "$releases_json" > "$RUNNER_TEMP/x9s-releases.json"
+            release_json="$(RELEASES_FILE="$RUNNER_TEMP/x9s-releases.json" ruby <<'RUBY'
+          require "json"
+          require "rubygems"
+
+          releases = JSON.parse(File.read(ENV.fetch("RELEASES_FILE"))).flatten
+          stable = releases.reject { |release| release["draft"] || release["prerelease"] }
+                           .select { |release| release["tag_name"].to_s.match?(/\Av?\d+\.\d+\.\d+\z/) }
+          abort "GitHub returned no published stable semantic versions." if stable.empty?
+          latest = stable.max_by { |release| Gem::Version.new(release.fetch("tag_name").sub(/\Av/, "")) }
+          puts JSON.generate(latest)
+          RUBY
+          )"
+          fi
+
+          RELEASE_JSON="$release_json" ruby <<'RUBY'
+          require "json"
+          require "rubygems"
+
+          release = JSON.parse(ENV.fetch("RELEASE_JSON"))
+          tag = release.fetch("tag_name")
+          abort "Refusing draft release #{tag}." if release["draft"]
+          abort "Refusing prerelease #{tag}." if release["prerelease"]
+          abort "Release tag #{tag} is not a stable semantic version." unless tag.match?(/\Av?\d+\.\d+\.\d+\z/)
+
+          new_version = Gem::Version.new(tag.sub(/\Av/, ""))
+          formula = File.read("Formula/x9s.rb")
+          current_text = formula.match(%r{/releases/download/v(\d+\.\d+\.\d+)/})&.[](1)
+          abort "Could not read current formula version." unless current_text
+          current_version = Gem::Version.new(current_text)
+
+          if new_version < current_version
+            abort "Release #{new_version} is older than installed formula version #{current_version}."
+          elsif new_version == current_version
+            puts "Formula is already current at #{current_version}; no update needed."
+            File.write(ENV.fetch("GITHUB_OUTPUT"), "changed=false\n", mode: "a")
+            exit 0
+          end
+
+          expected = %w[
+            x9s-darwin-arm64.tar.gz
+            x9s-darwin-amd64.tar.gz
+            x9s-linux-amd64.tar.gz
+            x9s-linux-arm64.tar.gz
+          ]
+          assets = release.fetch("assets").to_h { |asset| [asset.fetch("name"), asset] }
+          missing = expected.reject { |name| assets.key?(name) }
+          abort "Release #{tag} is missing required assets: #{missing.join(', ')}" unless missing.empty?
+
+          require "open3"
+          require "fileutils"
+          FileUtils.mkdir_p("/tmp/x9s-release")
+          checksums = {}
+          expected.each do |name|
+            asset = assets.fetch(name)
+            destination = "/tmp/x9s-release/#{name}"
+            url = asset.fetch("browser_download_url")
+            _out, err, status = Open3.capture3("curl", "--fail", "--location", "--silent", "--show-error", "--retry", "3", "--output", destination, url)
+            abort "Failed to download #{name}: #{err}" unless status.success?
+            _out, err, status = Open3.capture3("shasum", "-a", "256", destination)
+            abort "Could not calculate checksum for #{name}: #{err}" unless status.success?
+            checksum = _out.split.first
+            abort "Invalid SHA256 for #{name}." unless checksum&.match?(/\A[0-9a-f]{64}\z/)
+            checksums[name] = checksum
+          end
+
+          # Verify each archive has the executable at its expected top-level path.
+          expected.each do |name|
+            _out, err, status = Open3.capture3("tar", "-tzf", "/tmp/x9s-release/#{name}")
+            abort "Could not inspect #{name}: #{err}" unless status.success?
+            abort "Archive #{name} does not contain the x9s executable." unless _out.lines.map(&:strip).include?("x9s")
+          end
+
+          formula = <<~FORMULA
+            class X9s < Formula
+              desc "Terminal UI for Crossplane"
+              homepage "https://github.com/e-a-s-t/x9s"
+              on_macos do
+                on_arm do
+                  url "https://github.com/e-a-s-t/x9s/releases/download/v#{new_version}/x9s-darwin-arm64.tar.gz"
+                  sha256 "#{checksums.fetch('x9s-darwin-arm64.tar.gz')}"
+                end
+                on_intel do
+                  url "https://github.com/e-a-s-t/x9s/releases/download/v#{new_version}/x9s-darwin-amd64.tar.gz"
+                  sha256 "#{checksums.fetch('x9s-darwin-amd64.tar.gz')}"
+                end
+              end
+
+              on_linux do
+                on_arm do
+                  url "https://github.com/e-a-s-t/x9s/releases/download/v#{new_version}/x9s-linux-arm64.tar.gz"
+                  sha256 "#{checksums.fetch('x9s-linux-arm64.tar.gz')}"
+                end
+                on_intel do
+                  url "https://github.com/e-a-s-t/x9s/releases/download/v#{new_version}/x9s-linux-amd64.tar.gz"
+                  sha256 "#{checksums.fetch('x9s-linux-amd64.tar.gz')}"
+                end
+              end
+
+              def install
+                bin.install "x9s"
+              end
+
+              test do
+                system bin/"x9s", "--version"
+              end
+            end
+          FORMULA
+
+          temporary = "Formula/x9s.rb.tmp"
+          File.write(temporary, formula)
+          File.rename(temporary, "Formula/x9s.rb")
+          File.write(ENV.fetch("GITHUB_OUTPUT"), "changed=true\nversion=#{new_version}\n", mode: "a")
+          RUBY
+
+      - name: Validate formula with Homebrew
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          brew tap e-a-s-t/tap
+          cp Formula/x9s.rb "$(brew --repository e-a-s-t/tap)/Formula/x9s.rb"
+          brew audit --formula --strict e-a-s-t/tap/x9s
+          brew install --formula e-a-s-t/tap/x9s
+          brew test x9s
+
+      - name: Commit and push formula update
+        if: steps.update.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.update.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/x9s.rb
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: update x9s formula to ${VERSION}"
+          git push
